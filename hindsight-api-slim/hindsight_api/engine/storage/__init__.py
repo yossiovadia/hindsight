@@ -75,5 +75,21 @@ def create_file_storage(
             account_name=config.file_storage_azure_account_name,
             account_key=config.file_storage_azure_account_key,
         )
+    elif storage_type == "memlake":
+        # Files go to memlake's document store (each file a single-body document). The target and
+        # namespace prefix default to the memories store's, so a memlake deployment stores facts,
+        # documents and files in one place; override with HINDSIGHT_API_FILE_STORAGE_MEMLAKE_TARGET.
+        import os
+
+        from .memlake import MemlakeFileStorage
+
+        target = (
+            os.environ.get("HINDSIGHT_API_FILE_STORAGE_MEMLAKE_TARGET")
+            or os.environ.get("HINDSIGHT_API_MEMORIES_TARGET")
+            or "localhost:50051"
+        ).strip()
+        prefix = os.environ.get("HINDSIGHT_API_MEMORIES_NAMESPACE_PREFIX", "")
+        targets = [t.strip() for t in target.split(",")] if "," in target else target
+        return MemlakeFileStorage(target=targets, namespace_prefix=prefix)
     else:
-        raise ValueError(f"Unknown storage type: {storage_type}. Supported: 'native', 's3', 'gcs', 'azure'.")
+        raise ValueError(f"Unknown storage type: {storage_type}. Supported: 'native', 's3', 'gcs', 'azure', 'memlake'.")
